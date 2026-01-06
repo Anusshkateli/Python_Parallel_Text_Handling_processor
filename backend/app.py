@@ -123,5 +123,5 @@ def export_report():
     return Response(output.getvalue(), mimetype="text/csv", headers={"Content-disposition": "attachment; filename=report.csv"})
 
 if __name__ == "__main__":
-    print("Backend running with Permanent Database on http://127.0.0.1:5000")
+    print("Backend running on http://127.0.0.1:5500") # Changed 5000 to 5500
     app.run(debug=True, port=5500)
