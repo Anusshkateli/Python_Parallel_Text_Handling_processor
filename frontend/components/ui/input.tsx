@@ -1,8 +1,10 @@
 import * as React from "react"
 import { cn } from "@/lib/utils"
 
-// Fixed line 7: Using forwardRef and correct HTML attributes
-const Input = React.forwardRef<HTMLInputElement, React.InputHTMLAttributes<HTMLInputElement>>(
+export interface InputProps
+  extends React.InputHTMLAttributes<HTMLInputElement> {}
+
+const Input = React.forwardRef<HTMLInputElement, InputProps>(
   ({ className, type, ...props }, ref) => {
     return (
       <input
@@ -13,6 +15,8 @@ const Input = React.forwardRef<HTMLInputElement, React.InputHTMLAttributes<HTMLI
         )}
         ref={ref}
         {...props}
+        // ADD THIS LINE BELOW TO FIX THE ERROR
+        suppressHydrationWarning
       />
     )
   }

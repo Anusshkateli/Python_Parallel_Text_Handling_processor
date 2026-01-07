@@ -41,7 +41,8 @@ export default function DashboardPage() {
 
     setIsLoading(true)
     try {
-      const response = await fetch("http://127.0.0.1:5000/api/analyze", {
+      // UPDATED PORT TO 5001
+      const response = await fetch("http://127.0.0.1:5001/api/analyze", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -57,7 +58,7 @@ export default function DashboardPage() {
         alert(data.message || "Server error")
       }
     } catch (error) {
-      alert("Could not connect to Python backend. Is it running?")
+      alert("Could not connect to Python backend. Is it running on port 5001?")
     } finally {
       setIsLoading(false)
     }
@@ -68,7 +69,8 @@ export default function DashboardPage() {
     if (results.length === 0) return alert("No results to export");
 
     try {
-      const response = await fetch("http://127.0.0.1:5000/api/export", {
+      // UPDATED PORT TO 5001
+      const response = await fetch("http://127.0.0.1:5001/api/export", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ results }),
@@ -86,7 +88,7 @@ export default function DashboardPage() {
       a.click();
       a.remove();
     } catch (error) {
-      alert("Error downloading report. Check your backend export route.");
+      alert("Error downloading report. Check your backend export route on port 5001.");
     }
   };
 
