@@ -21,8 +21,6 @@ def init_db():
         db.execute('CREATE TABLE IF NOT EXISTS inbox (id INTEGER PRIMARY KEY AUTOINCREMENT, title TEXT, message TEXT, type TEXT, report_data TEXT, timestamp DATETIME DEFAULT CURRENT_TIMESTAMP)')
         db.execute('CREATE TABLE IF NOT EXISTS activity_history (id INTEGER PRIMARY KEY AUTOINCREMENT, filename TEXT, operations TEXT, status TEXT, records_count INTEGER, processing_time REAL, report_data TEXT, timestamp DATETIME DEFAULT CURRENT_TIMESTAMP)')
         db.execute('CREATE TABLE IF NOT EXISTS contact_messages (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT, email TEXT, message TEXT, timestamp DATETIME DEFAULT CURRENT_TIMESTAMP)')
-    print("Database Systems Fully Synchronized on Port 5001.")
-
 init_db()
 
 @app.route("/api/signup", methods=["POST"])
@@ -34,7 +32,7 @@ def signup():
             db.execute("INSERT INTO users (name, email, password) VALUES (?, ?, ?)", (data.get("full_name"), data.get("email"), pw))
             db.commit()
         return jsonify({"message": "Success"}), 201
-    except: return jsonify({"message": "User exists"}), 400
+    except: return jsonify({"message": "Error"}), 400
 
 @app.route("/api/login", methods=["POST"])
 def login():
@@ -50,8 +48,6 @@ def reset_password():
     data = request.json
     new_pw = generate_password_hash(data.get("new_password"))
     with get_db() as db:
-        user = db.execute("SELECT * FROM users WHERE email = ?", (data.get("email"),)).fetchone()
-        if not user: return jsonify({"message": "Email not found"}), 404
         db.execute("UPDATE users SET password = ? WHERE email = ?", (new_pw, data.get("email")))
         db.commit()
     return jsonify({"message": "Updated"}), 200
@@ -67,11 +63,9 @@ def analyze():
                 db.execute("INSERT INTO processed_history (content, score) VALUES (?, ?)", (str(row), scores[idx]))
             report_json = json.dumps(results)
             db.execute("INSERT INTO inbox (title, message, type, report_data) VALUES (?, ?, ?, ?)", 
-                       ("Analysis Task Completed", f"Processed {len(raw_rows)} records successfully.", "success", report_json))
+                       ("Analysis Task Completed", f"Successfully processed {len(raw_rows)} records.", "success", report_json))
             db.execute('''INSERT INTO activity_history (filename, operations, status, records_count, processing_time, report_data) 
-                         VALUES (?, ?, ?, ?, ?, ?)''', (data.get('filename', 'Manual_Input.csv'), ", ".join(data.get('operations', [])), "Completed", len(raw_rows), stats['processing_time'], report_json))
-            if stats.get('alert'):
-                db.execute("INSERT INTO inbox (title, message, type, report_data) VALUES (?, ?, ?, ?)", ("Risk Alert", "High risk sentiment threshold breached.", "alert", None))
+                         VALUES (?, ?, ?, ?, ?, ?)''', (data.get('filename', 'Bulk_Data.csv'), ", ".join(data.get('operations', [])), "Completed", len(raw_rows), stats['processing_time'], report_json))
             db.commit()
     return jsonify({"results": results, "stats": stats})
 
@@ -99,6 +93,7 @@ def cleanup():
     with get_db() as db:
         db.execute("DELETE FROM processed_history")
         db.execute("DELETE FROM activity_history")
+        db.execute("DELETE FROM inbox")
         db.commit()
     return jsonify({"message": "Cleaned"}), 200
 

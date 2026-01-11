@@ -10,7 +10,7 @@ from concurrent.futures import ThreadPoolExecutor
 
 class TextAnalyzer:
     def __init__(self):
-        self.stop_words = {'i', 'me', 'my', 'the', 'and', 'a', 'an', 'is', 'it', 'of', 'to', 'in', 'that'}
+        self.stop_words = {'i', 'me', 'my', 'the', 'and', 'a', 'an', 'is', 'it', 'of', 'to', 'in', 'that', 'with'}
         self.sentiment_rules = {
             'positive': ['total', 'graduate', 'agriculture', 'forestry', 'fishing', 'support', 'active', 'success', 'helpful', 'profit'],
             'negative': ['debt', 'overdraft', 'outstanding', 'issue', 'delayed', 'fail', 'error', 'poor', 'unpaid', 'loss']
@@ -22,7 +22,9 @@ class TextAnalyzer:
 
     def _get_df(self, text):
         try:
-            return pd.read_csv(io.StringIO(text.strip()), sep=None, engine='python', skipinitialspace=True)
+            if not text or len(text.strip()) == 0: return None
+            # engine='python' handles bulk-merged CSVs and auto-detects separators
+            return pd.read_csv(io.StringIO(text.strip()), sep=None, engine='python', skipinitialspace=True, on_bad_lines='skip')
         except: return None
 
     def _score_text_logic(self, t):
@@ -37,18 +39,18 @@ class TextAnalyzer:
     def run_pipeline(self, raw_text, operations):
         df = self._get_df(raw_text)
         if df is None or df.empty:
-            return [{"title": "Error", "output": "Invalid Data", "success": False}], None, None, None
+            return [{"title": "Error", "output": "Invalid Data Format", "success": False}], None, None, None
 
         start_time = time.time()
         total_records = len(df)
         candidates = [c for c in df.columns if c.lower() not in ['id', 'value', 'line_code', 'year']]
         target_col = max(candidates, key=lambda c: df[c].astype(str).str.len().mean())
 
-        # Milestone 2: Pattern Filtering
+        # Milestone 2: Regex Pattern Filtering
         sample_block = " ".join(df[target_col].astype(str).head(20)).lower() 
         detected_patterns = [p for p, reg in self.pattern_registry.items() if re.findall(reg, sample_block)]
 
-        # Multilingual Golden Rule
+        # Step 2: Language Detection
         try: lang = detect(" ".join(df[target_col].astype(str).head(5)))
         except: lang = 'en'
         
@@ -62,8 +64,8 @@ class TextAnalyzer:
             df.iloc[0:translate_limit, df.columns.get_loc(f'{target_col}_en')] = translated
             working_col = f'{target_col}_en'
 
-        # Milestone 3: Parallel Scoring
-        with ThreadPoolExecutor(max_workers=10) as ex:
+        # Milestone 3: Parallel Logic
+        with ThreadPoolExecutor(max_workers=15) as ex:
             scores = list(ex.map(self._score_text_logic, df[working_col].tolist()))
         
         avg_score = sum(scores) / len(scores) if scores else 0
@@ -72,25 +74,22 @@ class TextAnalyzer:
         for op in operations:
             output = ""
             if op == "Summarization":
-                output = f"📊 Data Distribution Analysis\n- Total Records: {total_records}\n- Patterns Found: {', '.join(detected_patterns)}\n"
+                output = f"📊 Data Analysis: {total_records} Records\n- Patterns: {', '.join(detected_patterns) if detected_patterns else 'Factual'}\n"
                 num_df = df.select_dtypes(include=['number'])
                 for col in num_df.columns:
-                    if 'id' not in col.lower(): output += f"- Mean {col}: {df[col].mean():.2f}\n"
+                    if 'id' not in col.lower(): output += f"- Avg {col}: {df[col].mean():.2f}\n"
             elif op == "Sentiment Analysis":
                 label = "Growth/Positive" if avg_score > 0 else "Risk/Negative" if avg_score < 0 else "Neutral"
-                output = f"🧠 Analytics Rule Engine: {label}\n- Sentiment Index: {avg_score:.2f}\n- Hits: {sum(1 for s in scores if s != 0)} records."
+                output = f"🧠 Scorer: {label}\n- Index: {avg_score:.2f}\n- Matches: {sum(1 for s in scores if s != 0)}"
             elif op == "Keyword Extraction":
                 output = "🔑 Category Frequency:\n"
                 for col in candidates[:3]:
                     top = df[col].value_counts().head(3)
-                    dist = ", ".join([f"{k}({v})" for k, v in top.items()])
-                    output += f"- {col.capitalize()}: {dist}\n"
+                    output += f"- {col}: " + ", ".join([f"{k}({v})" for k, v in top.items()]) + "\n"
             elif op == "Translation":
-                output = f"🌐 Translation Engine: Active\n- Detected: {lang.upper()}\n- Standard: English Analysis."
-            elif op == "Convert Case":
-                output = f"Transformation (UPPERCASE):\n{str(df[target_col].iloc[0]).upper()}"
+                output = f"🌐 Detect: {lang.upper()}\n- Target: English Standard Analysis."
             else:
-                output = "Status: Not Applicable\nReason: Dataset contains tabular factual data."
+                output = "Status: Not Applicable\nReason: Dataset contains factual categorical data."
 
             results.append({"title": op, "output": output, "success": True})
 
