@@ -8,13 +8,12 @@
 /* Add this block */
 @layer base {
   body {
-    /* Light Mode Styles */
-    @apply bg-white text-gray-900 transition-colors duration-300;
+    /* Standard Light Mode */
+    @apply bg-white text-slate-900 transition-colors duration-300;
   }
 
-  /* When the 'dark' class is present on the html tag */
   .dark body {
-    /* Pure Black Background for Dark Mode */
+    /* Full Dark Mode Background & Text */
     @apply bg-black text-white;
   }
 }
